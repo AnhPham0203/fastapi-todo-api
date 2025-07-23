@@ -1,6 +1,7 @@
 # sql_app/main.py
 
 import jwt
+from jwt import PyJWTError
 from fastapi import FastAPI, Depends, HTTPException  # type: ignore
 from sqlalchemy.orm import Session
 from . import security
@@ -21,16 +22,16 @@ app = FastAPI()
 # Dùng ["*"] để cho phép tất cả, nhưng trong thực tế nên chỉ định rõ.
 origins = [
     "http://localhost",
-    "http://localhost:3000", # Cổng mặc định cho React
-    "http://localhost:8080", # Cổng mặc định cho Vue
+    "http://localhost:3000",  # Cổng mặc định cho React
+    "http://localhost:8080",  # Cổng mặc định cho Vue
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, # Cho phép các nguồn trong danh sách
+    allow_origins=origins,  # Cho phép các nguồn trong danh sách
     allow_credentials=True,
-    allow_methods=["*"], # Cho phép tất cả các phương thức (GET, POST, etc.)
-    allow_headers=["*"], # Cho phép tất cả các header
+    allow_methods=["*"],  # Cho phép tất cả các phương thức (GET, POST, etc.)
+    allow_headers=["*"],  # Cho phép tất cả các header
 )
 
 # Thêm dependency cho OAuth2
@@ -107,7 +108,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
-    except JWTError:  # type: ignore
+    except PyJWTError:
         raise credentials_exception
 
     user = db.query(models.User).filter(
