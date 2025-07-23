@@ -9,7 +9,7 @@ SQLALCHEMY_DATABASE_URL = "sqlite:///./sql_app.db"
 
 # 2. Tạo SQLAlchemy engine
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL
 )
 # Ghi chú: connect_args={"check_same_thread": False} chỉ cần cho SQLite.
 
