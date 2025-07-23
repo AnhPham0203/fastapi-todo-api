@@ -1,0 +1,12 @@
+# Môi trường ảo
+venv/
+
+# File CSDL cục bộ
+sql_app.db
+
+# File biến môi trường
+.env
+
+# Thư mục cache của Python
+__pycache__/
+*.pyc
