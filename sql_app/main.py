@@ -24,6 +24,7 @@ origins = [
     "http://localhost",
     "http://localhost:3000",  # Cổng mặc định cho React
     "http://localhost:8080",  # Cổng mặc định cho Vue
+    "http://localhost:5173"
 ]
 
 app.add_middleware(
