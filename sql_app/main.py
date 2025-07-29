@@ -11,6 +11,7 @@ from .config import settings
 from . import models, schemas
 from .database import SessionLocal, engine
 from fastapi.middleware.cors import CORSMiddleware
+from .firebase_config import firebase_auth
 
 # Tạo các bảng trong CSDL (nếu chúng chưa tồn tại)
 models.Base.metadata.create_all(bind=engine)
@@ -53,47 +54,7 @@ def get_db():
 # --- Path Operations ---
 
 
-@app.post("/users/register", response_model=schemas.UserInDB)
-def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    # Kiểm tra xem username đã tồn tại chưa
-    db_user = db.query(models.User).filter(
-        models.User.username == user.username).first()
-    if db_user:
-        raise HTTPException(
-            status_code=400, detail="Username already registered")
 
-    # Băm mật khẩu trước khi lưu
-    hashed_password = security.get_password_hash(user.password)
-
-    # Tạo đối tượng User mới
-    db_user = models.User(username=user.username,
-                          hashed_password=hashed_password)
-
-    # Lưu vào CSDL
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-
-    return db_user
-
-
-@app.post("/users/login")
-def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # Tìm user
-    user = db.query(models.User).filter(
-        models.User.username == form_data.username).first()
-    # Xác thực
-    if not user or not security.verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=401,  # Unauthorized
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    # Tạo token
-    access_token = security.create_access_token(
-        data={"sub": user.username, "user_id": user.id}
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
 
 
 # --- DEPENDENCY ĐỂ LẤY NGƯỜI DÙNG HIỆN TẠI ---
@@ -104,19 +65,26 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY,
-                             algorithms=[settings.ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except PyJWTError:
-        raise credentials_exception
+        # Dùng Firebase Admin SDK để xác thực ID Token
+        decoded_token = firebase_auth.verify_id_token(token)
+        uid = decoded_token['uid']
+        
+        # Tìm user trong DB bằng uid, nếu chưa có thì tạo mới
+        user = db.query(models.User).filter(models.User.firebase_uid == uid).first()
+        if not user:
+            # Nếu muốn tự động tạo user trong DB khi họ đăng nhập lần đầu
+            user = models.User(firebase_uid=uid, username=decoded_token.get('email') or uid)
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        return user
 
-    user = db.query(models.User).filter(
-        models.User.username == username).first()
-    if user is None:
-        raise credentials_exception
-    return user
+    except Exception as e:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Invalid authentication credentials: {e}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 # --- BẢO VỆ ENDPOINT CREATE_TODO ---
 
