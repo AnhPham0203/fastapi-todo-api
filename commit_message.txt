@@ -1,0 +1,6 @@
+feat: Implement Firebase auth and clean repo
+
+- Add user registration functionality to the React frontend using Firebase Authentication.
+- Update the FastAPI backend to validate Firebase ID tokens and create users in the local database on their first login.
+- Refactor the User model to use firebase_uid as the primary identifier.
+- Update .gitignore to exclude sensitive files, virtual environments, and databases.
