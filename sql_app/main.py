@@ -54,9 +54,6 @@ def get_db():
 # --- Path Operations ---
 
 
-
-
-
 # --- DEPENDENCY ĐỂ LẤY NGƯỜI DÙNG HIỆN TẠI ---
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
@@ -65,15 +62,18 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
+        print(f"--- Firebase ID Token Received: {token} ---")
         # Dùng Firebase Admin SDK để xác thực ID Token
         decoded_token = firebase_auth.verify_id_token(token)
         uid = decoded_token['uid']
-        
+
         # Tìm user trong DB bằng uid, nếu chưa có thì tạo mới
-        user = db.query(models.User).filter(models.User.firebase_uid == uid).first()
+        user = db.query(models.User).filter(
+            models.User.firebase_uid == uid).first()
         if not user:
             # Nếu muốn tự động tạo user trong DB khi họ đăng nhập lần đầu
-            user = models.User(firebase_uid=uid, username=decoded_token.get('email') or uid)
+            user = models.User(
+                firebase_uid=uid, username=decoded_token.get('email') or uid)
             db.add(user)
             db.commit()
             db.refresh(user)
